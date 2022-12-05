@@ -1,0 +1,36 @@
+node {
+    stage('Git checkout') {
+        git 'https://github.com/Ashok4905/Kubernetes_Project.git'
+    }
+    
+    stage('Sending docker file to ansible over ssh'){
+        sshagent(['ansible_demo']) {
+            sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5'
+            sh 'scp /var/lib/jenkins/workspace/pipeline-demo/* azureuser@10.0.0.5:/home/azureuser'
+        }
+    }
+    
+    stage('Docker build image'){
+        sshagent(['ansible_demo']){
+            sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5 cd /home/azureuser/'
+            sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5 docker image build -t $JOB_NAME:v1.$BUILD_ID .'
+        }
+    }
+    
+    stage('Docker image tagging'){
+        sshagent(['ansible_demo']){
+            sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5 cd /home/azureuser/'
+            sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5 docker image tag $JOB_NAME:v1.$BUILD_ID ashok4905/$JOB_NAME:v1.$BUILD_ID'
+            sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5 docker image tag $JOB_NAME:v1.$BUILD_ID ashok4905/$JOB_NAME:latest'
+        }    
+    }
+    stage('Push Docker images to DockerHub'){
+        sshagent(['ansible_demo']) {
+            withCredentials([string(credentialsId: 'dockerhub_passwd', variable: 'dockerhub_passwd')]) {
+                sh "ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5 docker login -u ashok4905 -p '${dockerhub_passwd}' "
+                sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5 docker image push ashok4905/$JOB_NAME:v1.$BUILD_ID'
+                sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.5 docker image push ashok4905/$JOB_NAME:latest'
+            }
+        }
+    }
+}
