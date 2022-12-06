@@ -33,4 +33,10 @@ node {
             }
         }
     }
+    stage('Copy files from ansible to Kubernetes server'){
+        sshagent(['Kubernetes_demo']) {
+            sh 'ssh -o StrictHostKeyChecking=no azureuser@10.0.0.4'
+            sh 'scp /var/lib/jenkins/workspace/new-pipeline/* azureuser@10.0.0.5:/home/azureuser/* azureuser@10.0.0.4:/home/azureuser/'
+        }
+    }
 }
